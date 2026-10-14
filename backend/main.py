@@ -15,17 +15,38 @@ from supabase import create_client, Client
 # 1. CONFIGURATION
 # --------------------------------------------------
 
-load_dotenv()
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+load_dotenv(os.path.join(BASE_DIR, ".env"))
 
-SUPABASE_URL = os.environ["SUPABASE_URL"]
-SUPABASE_KEY = os.environ["SUPABASE_KEY"]
-JWT_SECRET = os.environ["JWT_SECRET"]
-ADMIN_SETUP_KEY = os.environ["ADMIN_SETUP_KEY"]
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+JWT_SECRET = os.getenv("JWT_SECRET")
+ADMIN_SETUP_KEY = os.getenv("ADMIN_SETUP_KEY")
+
+missing = [
+    key
+    for key, value in {
+        "SUPABASE_URL": SUPABASE_URL,
+        "SUPABASE_KEY": SUPABASE_KEY,
+        "JWT_SECRET": JWT_SECRET,
+        "ADMIN_SETUP_KEY": ADMIN_SETUP_KEY,
+    }.items()
+    if not value
+]
+
+if missing:
+    raise RuntimeError(
+        "Missing environment variables: " + ", ".join(missing)
+    )
 
 if len(JWT_SECRET) < 10 or len(ADMIN_SETUP_KEY) < 10:
-    raise RuntimeError("Use separate random secrets of at least 10 characters")
+    raise RuntimeError(
+        "Use separate random secrets of at least 10 characters"
+    )
 
 db: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+# Create the FastAPI application only once
 app = FastAPI(title="Attendance Monitoring API")
 
 password_hasher = PasswordHash.recommended()
@@ -60,6 +81,12 @@ class UpdateRole(BaseModel):
     role: str
 
 
+class MonitoringEvent(BaseModel):
+    event: str = Field(min_length=1, max_length=100)
+    timestamp: datetime | None = None
+    details: dict = Field(default_factory=dict)
+
+
 # --------------------------------------------------
 # 3. HELPER FUNCTIONS
 # --------------------------------------------------
@@ -86,13 +113,17 @@ def create_token(user: dict) -> str:
         "exp": now + timedelta(minutes=TOKEN_MINUTES),
     }
 
-    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+    return jwt.encode(
+        payload,
+        JWT_SECRET,
+        algorithm=JWT_ALGORITHM
+    )
 
 
 def find_user(user_id: str):
     user_id = user_id.strip().lower()
 
-    # Admin lookup
+    # Check admin account
     admin_result = (
         db.table("admin_users")
         .select("admin_id,full_name,password_hash,role,is_active")
@@ -112,7 +143,7 @@ def find_user(user_id: str):
             "is_active": row["is_active"],
         }
 
-    # Employee lookup: use one consistent table
+    # Check employee account
     employee_result = (
         db.table("employee_login_users")
         .select("user_id,full_name,password_hash,role,is_active")
@@ -292,7 +323,7 @@ def login(data: LoginData):
 
 
 # --------------------------------------------------
-# 8. CREATE EMPLOYEE - ADMIN ONLY
+# 8. CREATE EMPLOYEE
 # --------------------------------------------------
 
 @app.post("/admin/users")
@@ -318,7 +349,6 @@ def create_employee(
                 detail="Employee ID already exists"
             )
 
-        # Do not supply created_at: let the database default handle it.
         db.table("employee_login_users").insert({
             "username": user_id,
             "password_salt": "argon2-managed",
@@ -341,7 +371,11 @@ def create_employee(
 
         error_text = str(exc).lower()
 
-        if "23505" in error_text or "duplicate" in error_text or "unique" in error_text:
+        if (
+            "23505" in error_text
+            or "duplicate" in error_text
+            or "unique" in error_text
+        ):
             raise HTTPException(
                 status_code=409,
                 detail="Employee ID already exists"
@@ -354,13 +388,85 @@ def create_employee(
 
 
 # --------------------------------------------------
-# 9. UPDATE USER ROLE - ADMIN ONLY
+# 9. VIEW ALL EMPLOYEES
+# --------------------------------------------------
+
+@app.get("/admin/users")
+def get_all_employees(admin=Depends(require_admin)):
+    try:
+        response = (
+            db.table("employee_login_users")
+            .select("user_id,full_name,role,is_active")
+            .order("user_id")
+            .execute()
+        )
+
+        return {"users": response.data or []}
+
+    except Exception as exc:
+        print("GET EMPLOYEES ERROR:", repr(exc))
+        raise HTTPException(
+            status_code=500,
+            detail="Could not load employees"
+        )
+
+
+# --------------------------------------------------
+# 10. EMPLOYEE ATTENDANCE
+# --------------------------------------------------
+
+@app.get("/admin/users/{user_id}/attendance")
+def get_employee_attendance(
+    user_id: str,
+    admin=Depends(require_admin)
+):
+    try:
+        employee_response = (
+            db.table("employee_login_users")
+            .select("user_id,full_name,role,is_active")
+            .eq("user_id", user_id)
+            .limit(1)
+            .execute()
+        )
+
+        if not employee_response.data:
+            raise HTTPException(
+                status_code=404,
+                detail="Employee not found"
+            )
+
+        employee = employee_response.data[0]
+
+        attendance_response = (
+            db.table("employee_attendance")
+            .select("attendance_in,attendance_out")
+            .eq("username", user_id)
+            .execute()
+        )
+
+        return {
+            "employee": employee,
+            "attendance": attendance_response.data or []
+        }
+
+    except HTTPException:
+        raise
+    except Exception as exc:
+        print("EMPLOYEE ATTENDANCE ERROR:", repr(exc))
+        raise HTTPException(
+            status_code=500,
+            detail="Could not load employee attendance"
+        )
+
+
+# --------------------------------------------------
+# 11. UPDATE USER ROLE
 # --------------------------------------------------
 
 @app.put("/admin/users/role")
 def update_user_role(
     data: UpdateRole,
-    admin=Depends(require_admin),
+    admin=Depends(require_admin)
 ):
     user_id = clean_user_id(data.user_id)
     new_role = data.role.strip().lower()
@@ -400,7 +506,7 @@ def update_user_role(
                     detail="Cannot demote the last admin"
                 )
 
-        if user_id in [
+        admin_ids = [
             row["admin_id"]
             for row in (
                 db.table("admin_users")
@@ -408,7 +514,9 @@ def update_user_role(
                 .execute()
                 .data or []
             )
-        ]:
+        ]
+
+        if user_id in admin_ids:
             db.table("admin_users").update({
                 "role": new_role
             }).eq("admin_id", user_id).execute()
@@ -434,7 +542,7 @@ def update_user_role(
 
 
 # --------------------------------------------------
-# 10. CURRENT USER PROFILE
+# 12. CURRENT USER PROFILE
 # --------------------------------------------------
 
 @app.get("/me")
@@ -444,3 +552,90 @@ def my_profile(user=Depends(current_user)):
         "full_name": user["full_name"],
         "role": user["role"],
     }
+
+
+# --------------------------------------------------
+# 13. SAVE EMPLOYEE MONITORING EVENTS
+# --------------------------------------------------
+
+@app.post("/employee/monitoring-events")
+def save_monitoring_event(
+    data: MonitoringEvent,
+    user=Depends(current_user)
+):
+    # Only authenticated employees may upload events
+    if user["role"] != "employee":
+        raise HTTPException(
+            status_code=403,
+            detail="Employee access required"
+        )
+
+    event_name = data.event.strip()
+
+    if not event_name:
+        raise HTTPException(
+            status_code=400,
+            detail="Event name is required"
+        )
+
+    event_time = data.timestamp or datetime.now(timezone.utc)
+
+    record = {
+        "employee_user_id": str(user["user_id"]),
+        "event_name": event_name,
+        "event_timestamp": event_time.isoformat(),
+        "details": data.details,
+    }
+
+    try:
+        response = (
+            db.table("employee_monitoring_logs")
+            .insert(record)
+            .execute()
+        )
+
+        return {
+            "message": "Event saved",
+            "data": response.data or []
+        }
+
+    except Exception as exc:
+        print("SAVE MONITORING EVENT ERROR:", repr(exc))
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Could not save monitoring event. "
+                "Check backend terminal and Supabase table columns."
+            )
+        )
+
+
+# --------------------------------------------------
+# 14. VIEW MONITORING LOGS - ADMIN ONLY
+# --------------------------------------------------
+
+@app.get("/admin/monitoring-logs")
+def get_monitoring_logs(admin=Depends(require_admin)):
+    try:
+        response = (
+            db.table("employee_monitoring_logs")
+            .select(
+                "id,employee_user_id,event_name,"
+                "event_timestamp,details,created_at"
+            )
+            .order("event_timestamp", desc=True)
+            .limit(200)
+            .execute()
+        )
+
+        return {"logs": response.data or []}
+
+    except Exception as exc:
+        print("GET MONITORING LOGS ERROR:", repr(exc))
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Could not load monitoring logs. "
+                "Check backend terminal and Supabase table columns."
+            )
+        )

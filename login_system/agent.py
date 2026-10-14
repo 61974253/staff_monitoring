@@ -10,6 +10,14 @@ import threading
 from pathlib import Path
 from datetime import datetime
 from pynput import mouse, keyboard
+import requests
+
+
+# Backend API endpoint
+API_URL = "http://127.0.0.1:8000/employee/monitoring-events"
+
+# Read the employee login token from the environment
+ACCESS_TOKEN = os.environ.get("EMPLOYEE_ACCESS_TOKEN", "")
 
 
 # ---------------- CONFIGURATION ----------------
@@ -36,6 +44,7 @@ black_screen_lock = threading.Lock()
 
 # ---------------- EVENT LOGGER ----------------
 
+
 def log_event(event_name, details=None):
     record = {
         "event": event_name,
@@ -43,12 +52,42 @@ def log_event(event_name, details=None):
         "details": details or {}
     }
 
+    # Keep a local copy of the event
     with open(LOG_FILE, "a", encoding="utf-8") as file:
         file.write(json.dumps(record) + "\n")
         file.flush()
         os.fsync(file.fileno())
 
+    # Print the event in the terminal
     print(record)
+
+    # Upload the event to the backend
+    if not ACCESS_TOKEN:
+        print("UPLOAD FAILED: Employee login token is missing.")
+        return
+
+    try:
+        response = requests.post(
+            API_URL,
+            json=record,
+            headers={
+                "Authorization": f"Bearer {ACCESS_TOKEN}"
+            },
+            timeout=10
+        )
+
+        if response.ok:
+            print("SUPABASE UPLOAD: SUCCESS")
+        else:
+            print(
+                "SUPABASE UPLOAD: FAILED",
+                response.status_code,
+                response.text
+            )
+
+    except requests.RequestException as error:
+        print("UPLOAD CONNECTION ERROR:", error)
+
 
 
 # ---------------- ACTIVITY DETECTION ----------------

@@ -4,8 +4,55 @@ from tkinter import messagebox
 import requests
 import threading
 import admindash
+import os
+import sys
+import subprocess
+from pathlib import Path
+
+
 
 API_URL = "http://127.0.0.1:8000/login"
+#agent.py connection
+
+BASE_DIR = Path(__file__).resolve().parent
+AGENT_FILE = BASE_DIR / "agent.py"
+
+agent_process = None
+
+
+def start_employee_agent(result):
+    global agent_process
+
+    # Avoid starting duplicate agent processes
+    if agent_process is not None and agent_process.poll() is None:
+        return
+
+    if not AGENT_FILE.exists():
+        messagebox.showerror(
+            "Agent Error",
+            f"agent.py not found:\n{AGENT_FILE}"
+        )
+        return
+
+    # Pass login details securely through the child process environment
+    agent_env = os.environ.copy()
+    agent_env["EMPLOYEE_ACCESS_TOKEN"] = result.get("access_token", "")
+    agent_env["EMPLOYEE_USER_ID"] = result.get("user_id", "")
+
+    try:
+        agent_process = subprocess.Popen(
+            [sys.executable, str(AGENT_FILE)],
+            cwd=str(BASE_DIR),
+            env=agent_env
+        )
+
+        status_label.config(text="Employee login successful. Agent started.")
+
+    except OSError as error:
+        messagebox.showerror(
+            "Agent Error",
+            f"Could not start agent.py:\n{error}"
+        )
 
 
 def admin_user():
@@ -95,16 +142,21 @@ def login_success(result):
             full_name
         )
 
+    
     elif role == "employee":
+        # Start agent after successful employee login
+        start_employee_agent(result)
+
         status_label.config(text="Employee login successful!")
 
         messagebox.showinfo(
             "Welcome",
             f"Welcome, {full_name}!\n"
-            "Employee attendance screen is the next step."
+            "Employee login successful."
         )
 
         login_button.config(state="normal", text="Login")
+
 
     else:
         login_button.config(state="normal", text="Login")

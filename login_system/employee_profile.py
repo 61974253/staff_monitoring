@@ -4,7 +4,7 @@ from tkinter import ttk, messagebox
 import requests
 
 # Backend API URL
-API_BASE_URL = "http://127.0.0.1:8000"
+API_BASE_URL = "http://127.0.0.1:8002"
 
 
 def open_employee_profile(root, access_token, employee_id):

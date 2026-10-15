@@ -2,19 +2,18 @@
 import json
 import time
 import os
-import atexit
 import subprocess
 import sys
 import threading
 
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
 from pynput import mouse, keyboard
 import requests
 
 
 # Backend API endpoint
-API_URL = "http://127.0.0.1:8000/employee/monitoring-events"
+API_URL = "http://127.0.0.1:8002/employee/monitoring-events"
 
 # Read the employee login token from the environment
 ACCESS_TOKEN = os.environ.get("EMPLOYEE_ACCESS_TOKEN", "")
@@ -30,7 +29,9 @@ LOG_FILE = BASE_DIR / "events.jsonl"
 BLACK_SCREEN_FILE = BASE_DIR / "blackscreen.py"
 
 last_activity = time.monotonic()
+last_activity_at = datetime.now().astimezone()
 last_check = time.monotonic()
+idle_started_at = None
 
 active_seconds = 0.0
 idle_seconds = 0.0
@@ -64,7 +65,7 @@ def log_event(event_name, details=None):
     # Upload the event to the backend
     if not ACCESS_TOKEN:
         print("UPLOAD FAILED: Employee login token is missing.")
-        return
+        return False
 
     try:
         response = requests.post(
@@ -78,23 +79,27 @@ def log_event(event_name, details=None):
 
         if response.ok:
             print("SUPABASE UPLOAD: SUCCESS")
+            return True
         else:
             print(
                 "SUPABASE UPLOAD: FAILED",
                 response.status_code,
                 response.text
             )
+            return False
 
     except requests.RequestException as error:
         print("UPLOAD CONNECTION ERROR:", error)
+        return False
 
 
 
 # ---------------- ACTIVITY DETECTION ----------------
 
 def record_activity():
-    global last_activity
+    global last_activity, last_activity_at
     last_activity = time.monotonic()
+    last_activity_at = datetime.now().astimezone()
 
 
 def on_mouse_move(x, y):
@@ -113,26 +118,13 @@ def on_key_press(key):
 
 # ---------------- BLACK SCREEN ----------------
 
-def is_black_screen_running():
-    global black_screen_process
-
-    with black_screen_lock:
-        if black_screen_process is not None:
-            if black_screen_process.poll() is None:
-                return True
-
-            black_screen_process = None
-
-    return False
-
-
 def open_black_screen():
     global black_screen_process
 
     if not BLACK_SCREEN_FILE.exists():
         log_event(
             "BLACK_SCREEN_ERROR",
-            {"message": "black_screen.py file not found"}
+            {"message": f"Black screen file not found: {BLACK_SCREEN_FILE}"}
         )
         return
 
@@ -141,10 +133,19 @@ def open_black_screen():
             if black_screen_process.poll() is None:
                 return
 
-        black_screen_process = subprocess.Popen(
-            [sys.executable, str(BLACK_SCREEN_FILE)],
-            cwd=str(BASE_DIR)
-        )
+        try:
+            black_screen_process = subprocess.Popen(
+                [sys.executable, str(BLACK_SCREEN_FILE)],
+                cwd=str(BASE_DIR),
+                stdin=subprocess.PIPE,
+                text=True
+            )
+        except OSError as error:
+            log_event(
+                "BLACK_SCREEN_ERROR",
+                {"message": f"Could not launch black screen: {error}"}
+            )
+            return
 
     log_event("BLACK_SCREEN_OPENED")
 
@@ -152,7 +153,7 @@ def open_black_screen():
 # ---------------- SUMMARY ----------------
 
 def save_summary():
-    log_event(
+    if not log_event(
         "SESSION_SUMMARY",
         {
             "active_input_seconds": round(active_seconds),
@@ -162,7 +163,59 @@ def save_summary():
                 "not proof of productive work."
             )
         }
+    ):
+        raise RuntimeError("Could not save the final activity summary")
+
+
+def save_idle_session(end_time):
+    global idle_started_at
+
+    if idle_started_at is None:
+        return
+
+    idle_seconds_for_session = max(
+        0,
+        round((end_time - idle_started_at).total_seconds())
     )
+    log_event(
+        "IDLE_SESSION",
+        {
+            "idle_start": idle_started_at.isoformat(),
+            "idle_end": end_time.isoformat(),
+            "idle_seconds": idle_seconds_for_session,
+        }
+    )
+    idle_started_at = None
+
+
+def stop_black_screen():
+    global black_screen_process
+
+    process = black_screen_process
+    if process is None:
+        return
+
+    if process.poll() is None:
+        if process.stdin is not None:
+            try:
+                process.stdin.write("logout\n")
+                process.stdin.flush()
+            except (BrokenPipeError, OSError):
+                pass
+
+        try:
+            process.wait(timeout=3)
+        except subprocess.TimeoutExpired:
+            process.terminate()
+            try:
+                process.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait()
+
+    if process.stdin is not None:
+        process.stdin.close()
+    black_screen_process = None
 
 
 # ---------------- MONITORING ----------------
@@ -173,6 +226,16 @@ def main():
     global active_seconds
     global idle_seconds
     global running
+    global idle_started_at
+
+    def listen_for_logout():
+        global running
+        if sys.stdin is None:
+            return
+        for command in sys.stdin:
+            if command.strip().lower() == "logout":
+                running = False
+                return
 
     mouse_listener = mouse.Listener(
         on_move=on_mouse_move,
@@ -185,13 +248,12 @@ def main():
 
     mouse_listener.start()
     keyboard_listener.start()
+    threading.Thread(target=listen_for_logout, daemon=True).start()
 
     log_event(
         "MONITORING_STARTED",
         {"idle_threshold_seconds": IDLE_THRESHOLD}
     )
-
-    atexit.register(save_summary)
 
     try:
         while running:
@@ -213,6 +275,7 @@ def main():
                 idle_seconds += elapsed
 
             if new_status != current_status:
+                previous_status = current_status
                 current_status = new_status
 
                 log_event(
@@ -220,15 +283,19 @@ def main():
                     {"no_input_seconds": round(no_input)}
                 )
 
-            # Open the screen once when idle begins.
-            if new_status == "IDLE":
-                if not is_black_screen_running():
+                if new_status == "IDLE":
+                    idle_started_at = min(
+                        last_activity_at + timedelta(seconds=IDLE_THRESHOLD),
+                        datetime.now().astimezone()
+                    )
                     open_black_screen()
+                elif previous_status == "IDLE":
+                    save_idle_session(datetime.now().astimezone())
 
             time.sleep(1)
 
     except KeyboardInterrupt:
-        log_event("MONITORING_STOPPED")
+        print("\nMonitoring stopped by user.")
 
     finally:
         running = False
@@ -236,9 +303,22 @@ def main():
         mouse_listener.stop()
         keyboard_listener.stop()
 
+        stopped_at = datetime.now().astimezone()
+        final_elapsed = max(0, time.monotonic() - last_check)
+        if current_status == "IDLE":
+            idle_seconds += final_elapsed
+        else:
+            active_seconds += final_elapsed
+        last_check = time.monotonic()
+
+        stop_black_screen()
+
+        if current_status == "IDLE":
+            save_idle_session(stopped_at)
+
         log_event("MONITORING_STOPPED")
+        save_summary()
 
 
 if __name__ == "__main__":
     main()
-

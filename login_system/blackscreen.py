@@ -2,6 +2,9 @@
 import tkinter as tk
 import json
 import os
+import requests
+import sys
+import threading
 
 from pathlib import Path
 from datetime import datetime
@@ -11,6 +14,9 @@ from datetime import datetime
 
 BASE_DIR = Path(__file__).resolve().parent
 LOG_FILE = BASE_DIR / "events.jsonl"
+API_URL = "http://127.0.0.1:8002/employee/monitoring-events"
+BREAK_SESSION_API_URL = "http://127.0.0.1:8002/employee/employee-break-sessions"
+ACCESS_TOKEN = os.environ.get("EMPLOYEE_ACCESS_TOKEN", "")
 
 start_time = datetime.now()
 timer_running = True
@@ -29,6 +35,43 @@ def log_event(event_name, details=None):
         file.write(json.dumps(record) + "\n")
         file.flush()
         os.fsync(file.fileno())
+
+    if not ACCESS_TOKEN:
+        print("UPLOAD FAILED: Employee login token is missing.")
+        return
+
+    
+    if event_name == "BREAK_SESSION":
+       upload_url = BREAK_SESSION_API_URL
+       upload_record = {
+        "break_start": (details or {}).get("start_time"),
+        "break_end": (details or {}).get("end_time"),
+        "break_reason": (details or {}).get("reason"),
+        "break_type": (details or {}).get("reason") or "personal",
+    }
+
+    else:
+        upload_url = API_URL
+        upload_record = record
+
+    try:
+        response = requests.post(
+            upload_url,
+            json=upload_record,
+            headers={"Authorization": f"Bearer {ACCESS_TOKEN}"},
+            timeout=10
+        )
+
+        if response.ok:
+            print(f"SUPABASE UPLOAD: {event_name} saved")
+        else:
+            print(
+                f"SUPABASE UPLOAD FAILED: {event_name}",
+                response.status_code,
+                response.text
+            )
+    except requests.RequestException as error:
+        print(f"UPLOAD CONNECTION ERROR ({event_name}):", error)
 
 
 # ---------------- TIMER ----------------
@@ -81,6 +124,22 @@ def resume_work():
     )
 
     root.destroy()
+
+
+def close_for_logout():
+    global timer_running
+    timer_running = False
+    root.destroy()
+
+
+def listen_for_logout():
+    if sys.stdin is None:
+        return
+
+    for command in sys.stdin:
+        if command.strip().lower() == "logout":
+            root.after(0, close_for_logout)
+            return
 
 
 # ---------------- WINDOW ----------------
@@ -200,6 +259,6 @@ log_event(
 )
 
 update_timer()
+threading.Thread(target=listen_for_logout, daemon=True).start()
 
 root.mainloop()
-

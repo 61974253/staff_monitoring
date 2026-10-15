@@ -1,0 +1,210 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- Browser and page settings -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Staff Monitoring | Admin Dashboard</title>
+
+    <!-- Load dashboard design -->
+    <link rel="stylesheet" href="/web_admin/style.css?v=20261015-7">
+</head>
+
+<body>
+
+    <!-- Top navigation header -->
+    <header class="main-header">
+        <div class="header-content">
+            <div class="brand">
+                <div class="brand-icon">SM</div>
+
+                <div>
+                    <h1>Staff Monitoring</h1>
+                    <p>Attendance Management System</p>
+                </div>
+            </div>
+
+            <div class="header-label">
+                <span class="online-dot"></span>
+                Admin Portal
+            </div>
+        </div>
+    </header>
+
+
+    <!-- Main page content -->
+    <main class="main-container">
+
+        <!-- ===================================
+             ADMIN LOGIN
+        ==================================== -->
+        <section id="login-section" class="login-wrapper">
+
+            <div class="login-card">
+
+                <div class="login-icon">A</div>
+
+                <h2>Admin Login</h2>
+
+                <p class="login-description">
+                    Sign in to manage employees and view attendance.
+                </p>
+
+                <form id="login-form">
+
+                    <div class="form-group">
+                        <label for="user-id">Admin ID</label>
+
+                        <input
+                            id="user-id"
+                            name="user_id"
+                            type="text"
+                            placeholder="Enter your Admin ID"
+                            autocomplete="username"
+                            required
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password">Password</label>
+
+                        <input
+                            id="password"
+                            name="password"
+                            type="password"
+                            placeholder="Enter your password"
+                            autocomplete="current-password"
+                            required
+                        >
+                    </div>
+
+                    <button
+                        id="login-button"
+                        type="submit"
+                        class="primary-button full-width"
+                    >
+                        Sign In
+                    </button>
+
+                    <p
+                        id="login-message"
+                        class="message"
+                        role="alert"
+                        aria-live="polite"
+                    ></p>
+
+                </form>
+
+                <p class="security-note">
+                    Secure administrator access
+                </p>
+
+            </div>
+        </section>
+
+
+        <!-- ===================================
+             ADMIN DASHBOARD
+        ==================================== -->
+        <section id="dashboard-section" hidden>
+
+            <!-- Dashboard welcome area -->
+            <div class="dashboard-heading">
+                <div>
+                    <p class="eyebrow">ADMINISTRATION</p>
+
+                    <h2>Dashboard</h2>
+
+                    <p class="muted">
+                        Manage your staff and monitor attendance activity.
+                    </p>
+                </div>
+
+                <button
+                    id="logout-button"
+                    type="button"
+                    class="secondary-button"
+                >
+                    Sign Out
+                </button>
+            </div>
+
+
+            <!-- Dashboard navigation -->
+            <nav class="dashboard-nav" aria-label="Admin sections">
+
+                <button
+                    id="users-button"
+                    type="button"
+                    class="nav-button active"
+                >
+                    <span class="nav-icon">👥</span>
+                    Employees
+                </button>
+
+                <button
+                    id="logs-button"
+                    type="button"
+                    class="nav-button"
+                >
+                    <span class="nav-icon">📋</span>
+                    Monitoring Logs
+                </button>
+
+            </nav>
+
+
+            <!-- Status messages -->
+            <div
+                id="result-message"
+                class="message dashboard-message"
+                role="status"
+                aria-live="polite"
+            ></div>
+
+
+            <!-- Dynamic dashboard content -->
+            <section class="content-panel">
+
+                <div class="content-heading">
+                    <div>
+                        <h2 id="result-title">Employee Management</h2>
+
+                        <p id="section-description" class="muted">
+                            Select an employee to view their profile.
+                        </p>
+                    </div>
+                </div>
+
+                <!--
+                    app.js will display employee cards,
+                    employee profiles, attendance tables,
+                    or monitoring logs inside this container.
+                -->
+                <div id="results" class="results-container">
+                    <p class="muted">
+                        Loading dashboard...
+                    </p>
+                </div>
+
+            </section>
+
+
+            <!-- Footer -->
+            <footer class="dashboard-footer">
+                <p>Staff Monitoring &amp; Attendance System</p>
+                <p>Administrator Dashboard</p>
+            </footer>
+
+        </section>
+
+    </main>
+
+
+    <!-- Load dashboard functionality -->
+    <script src="/web_admin/app.js?v=20261015-7"></script>
+
+</body>
+</html>

@@ -4,6 +4,7 @@ from tkinter import messagebox
 import requests
 import threading
 import admindash
+import employee_dashboard
 import os
 import sys
 import subprocess
@@ -159,25 +160,23 @@ def login_success(result):
     )
 
     if role == "admin":
-        status_label.config(text="Login successful!")
-
-        messagebox.showinfo(
-            "Welcome",
-            f"Welcome, {full_name}!"
-        )
-
         login_button.config(state="normal", text="Login")
-
-        # Open admin dashboard using the existing login window
-        admindash.open_dashboard(
-            root,
-            result.get("access_token"),
-            result.get("user_id"),
-            full_name
+        status_label.config(
+            text="Admin login is not permitted on Employee Workstation.",
+            fg="#dc2626"
         )
+        messagebox.showerror(
+            "Access Denied - Employee Only",
+            "This login application is strictly for Employee Workstations.\n\n"
+            "Admin accounts are not accepted here.\n"
+            "Please log in to the Web Admin Dashboard at:\n"
+            "http://127.0.0.1:8000/admin"
+        )
+        return
 
     
     elif role == "employee":
+<<<<<<< HEAD
         employee_access_token = result.get("access_token")
         employee_session_result = result
         # Start agent after successful employee login
@@ -188,13 +187,39 @@ def login_success(result):
         employee_status_label.config(text="Monitoring is active.")
         employee_dashboard.pack(fill="both", expand=True)
         status_label.config(text="Employee login successful!")
+=======
+        # 1. Start agent in background after successful employee login
+        start_employee_agent(result)
 
-        messagebox.showinfo(
-            "Welcome",
-            f"Welcome, {full_name}!\n"
-            "Employee login successful."
+        # 2. Punch attendance check-in in Supabase
+        def _check_in():
+            try:
+                requests.post(
+                    "http://127.0.0.1:8000/employee/attendance/check-in",
+                    headers={"Authorization": f"Bearer {result.get('access_token')}"},
+                    timeout=5
+                )
+            except Exception as exc:
+                print("ATTENDANCE PUNCH-IN ERROR:", exc)
+>>>>>>> 5a595d8 (feat: enhance admin web dashboard, employee monitoring, and remove id column dependencies)
+
+        threading.Thread(target=_check_in, daemon=True).start()
+
+        status_label.config(text="Launching TCS Workstation Monitoring...")
+
+        # 3. Launch TCS Employee Live Dashboard
+        employee_dashboard.open_employee_dashboard(
+            root,
+            result.get("access_token"),
+            result.get("user_id"),
+            full_name,
+            agent_process
         )
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5a595d8 (feat: enhance admin web dashboard, employee monitoring, and remove id column dependencies)
     else:
         login_button.config(state="normal", text="Login")
         messagebox.showerror(

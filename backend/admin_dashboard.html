@@ -1,0 +1,1256 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TCS Staff Monitoring - Admin Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --border: #e2e8f0;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --success: #16a34a;
+      --danger: #dc2626;
+      --warning: #d97706;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* LOGIN MODAL */
+    #login-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+
+    .login-card {
+      background: #ffffff;
+      width: 100%;
+      max-width: 420px;
+      padding: 36px 32px;
+      border-radius: 16px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+      border: 1px solid var(--border);
+      text-align: center;
+    }
+
+    .login-icon {
+      width: 56px;
+      height: 56px;
+      background: #eff6ff;
+      color: #2563eb;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      margin-bottom: 16px;
+    }
+
+    .login-card h2 {
+      font-size: 22px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 6px;
+    }
+
+    .login-card p {
+      font-size: 13px;
+      color: #64748b;
+      margin-bottom: 24px;
+    }
+
+    .form-group {
+      text-align: left;
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #334155;
+      margin-bottom: 6px;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 8px;
+      font-size: 14px;
+      outline: none;
+      transition: all 0.2s;
+    }
+
+    .form-group input:focus {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    }
+
+    .btn-submit {
+      width: 100%;
+      padding: 12px;
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-top: 8px;
+    }
+
+    .btn-submit:hover {
+      background: #1d4ed8;
+    }
+
+    .error-msg {
+      background: #fee2e2;
+      color: #dc2626;
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 16px;
+      display: none;
+    }
+
+    /* HEADER */
+    .app-header {
+      background: #ffffff;
+      border-bottom: 1px solid var(--border);
+      padding: 14px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-logo {
+      width: 38px;
+      height: 38px;
+      background: linear-gradient(135deg, #1e3a8a, #2563eb);
+      color: #fff;
+      font-weight: 800;
+      font-size: 17px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+    }
+
+    .brand h1 {
+      font-size: 18px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    .brand span {
+      font-size: 12px;
+      color: #64748b;
+      font-weight: 500;
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .user-badge {
+      background: #eff6ff;
+      color: #1e40af;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      border: 1px solid #bfdbfe;
+    }
+
+    .btn-logout {
+      background: #f1f5f9;
+      color: #475569;
+      border: 1px solid #cbd5e1;
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-logout:hover {
+      background: #fee2e2;
+      color: #dc2626;
+      border-color: #fca5a5;
+    }
+
+    /* MAIN CONTAINER */
+    .main-container {
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 28px 20px;
+    }
+
+    /* VIEW 1: EMPLOYEES DIRECTORY */
+    .view-card {
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .view-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .view-title-group h2 {
+      font-size: 18px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    .view-title-group p {
+      font-size: 13px;
+      color: #64748b;
+      margin-top: 2px;
+    }
+
+    .badge-count {
+      background: #eff6ff;
+      color: #2563eb;
+      font-size: 13px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 20px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13.5px;
+    }
+
+    th {
+      background: #f8fafc;
+      color: #475569;
+      font-weight: 600;
+      text-align: left;
+      padding: 13px 18px;
+      border-bottom: 1px solid var(--border);
+      font-size: 12.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    td {
+      padding: 14px 18px;
+      border-bottom: 1px solid #f1f5f9;
+      color: #1e293b;
+      vertical-align: middle;
+    }
+
+    tr.clickable-row {
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    tr.clickable-row:hover td {
+      background: #f1f5f9;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .status-active {
+      background: #dcfce7;
+      color: #15803d;
+    }
+
+    .status-inactive {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+
+    .btn-select {
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      padding: 7px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-select:hover {
+      background: #1d4ed8;
+    }
+
+    /* VIEW 2: EMPLOYEE PROFILE */
+    #employee-profile-view {
+      display: none;
+    }
+
+    .profile-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    .btn-back {
+      background: #ffffff;
+      color: #334155;
+      border: 1px solid #cbd5e1;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+
+    .btn-back:hover {
+      background: #f8fafc;
+      border-color: #94a3b8;
+    }
+
+    .employee-hero {
+      background: linear-gradient(135deg, #1e293b, #0f172a);
+      color: #ffffff;
+      border-radius: 14px;
+      padding: 24px 28px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .emp-avatar {
+      width: 56px;
+      height: 56px;
+      background: #3b82f6;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .emp-meta h3 {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .emp-meta p {
+      font-size: 13.5px;
+      color: #94a3b8;
+    }
+
+    .emp-meta p strong {
+      color: #f8fafc;
+    }
+
+    /* METRIC CARDS */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 16px;
+      margin-bottom: 26px;
+    }
+
+    .kpi-card {
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .kpi-icon {
+      width: 50px;
+      height: 50px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+    }
+
+    .kpi-val {
+      font-size: 22px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 2px;
+    }
+
+    .kpi-lbl {
+      font-size: 12px;
+      font-weight: 600;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .section-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #0f172a;
+      margin: 28px 0 14px 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .time-badge {
+      font-weight: 600;
+      color: #1e3a8a;
+      background: #eff6ff;
+      padding: 4px 8px;
+      border-radius: 6px;
+      display: inline-block;
+    }
+
+    .mins-badge {
+      font-weight: 700;
+      color: #b45309;
+      background: #fef3c7;
+      padding: 4px 10px;
+      border-radius: 8px;
+      display: inline-block;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ADMIN LOGIN MODAL -->
+  <div id="login-overlay">
+    <div class="login-card">
+      <div class="login-icon">🛡️</div>
+      <h2>Admin Portal Sign In</h2>
+      <p>Log in with your administrator account (ihc001)</p>
+
+      <div id="login-error" class="error-msg"></div>
+
+      <form id="admin-login-form">
+        <div class="form-group">
+          <label>Admin ID / Username</label>
+          <input type="text" id="admin-username" placeholder="ihc001" required autofocus>
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="admin-password" placeholder="••••••••" required>
+        </div>
+        <div style="display:flex; justify-content:flex-end; margin-top:-6px; margin-bottom:14px;">
+          <a href="javascript:void(0)" onclick="showForgotPasswordForm()"
+            style="font-size:12.5px; color:#2563eb; text-decoration:none; font-weight:600;">
+            Forgot Password? (Via Email)
+          </a>
+        </div>
+        <button type="submit" class="btn-submit" id="btn-login">Sign In</button>
+      </form>
+
+      <!-- ADMIN FORGOT PASSWORD FORM (EMAIL OTP RESET) -->
+      <form id="admin-forgot-form" style="display:none; text-align:left;">
+        <div id="forgot-error" class="error-msg"></div>
+        <div id="forgot-success"
+          style="display:none; background:#dcfce7; color:#15803d; padding:10px 12px; border-radius:8px; font-size:13px; font-weight:600; margin-bottom:16px;">
+        </div>
+
+        <!-- STEP 1: ADMIN ID & EMAIL -->
+        <div id="forgot-step-1">
+          <div class="form-group">
+            <label>Admin ID</label>
+            <input type="text" id="forgot-admin-id" placeholder="ihc001" required>
+          </div>
+          <div class="form-group">
+            <label>Registered Email ID</label>
+            <input type="email" id="forgot-email" placeholder="admin@example.com" required>
+            <span style="font-size:11.5px; color:#64748b; display:block; margin-top:3px;">A 6-digit verification code
+              will be sent to this email</span>
+          </div>
+          <button type="button" class="btn-submit" id="btn-send-otp" onclick="handleSendOTP()">
+            Send Verification Code to Email
+          </button>
+        </div>
+
+        <!-- STEP 2: OTP & NEW PASSWORD -->
+        <div id="forgot-step-2" style="display:none;">
+          <div class="form-group">
+            <label>6-Digit Verification Code (OTP)</label>
+            <input type="text" id="forgot-otp" placeholder="e.g. 582194" maxlength="6" required>
+          </div>
+          <div class="form-group">
+            <label>New Password</label>
+            <input type="password" id="forgot-new-pwd" placeholder="Min 5 characters" required minlength="5">
+          </div>
+          <div class="form-group">
+            <label>Confirm New Password</label>
+            <input type="password" id="forgot-confirm-pwd" placeholder="Re-enter new password" required minlength="5">
+          </div>
+          <button type="button" class="btn-submit" id="btn-reset-pwd" onclick="handleVerifyAndReset()">
+            Reset Password & Sign In
+          </button>
+        </div>
+
+        <div style="text-align:center; margin-top:16px;">
+          <a href="javascript:void(0)" onclick="showLoginForm()"
+            style="font-size:13px; color:#64748b; text-decoration:none; font-weight:600;">
+            ← Back to Sign In
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- CREATE NEW EMPLOYEE MODAL -->
+  <div id="create-employee-overlay"
+    style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.8); backdrop-filter:blur(6px); z-index:9998; align-items:center; justify-content:center;">
+    <div
+      style="background:#ffffff; width:100%; max-width:440px; border-radius:14px; padding:28px 24px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.25); border:1px solid #e2e8f0; position:relative;">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:18px;">
+        <h3 style="font-size:18px; font-weight:700; color:#0f172a; display:flex; align-items:center; gap:8px;">
+          <span>👤</span> Create New Employee
+        </h3>
+        <button onclick="closeCreateEmployeeModal()"
+          style="background:none; border:none; font-size:22px; color:#64748b; cursor:pointer; line-height:1;">&times;</button>
+      </div>
+
+      <div id="create-emp-error" class="error-msg"></div>
+      <div id="create-emp-success"
+        style="display:none; background:#dcfce7; color:#15803d; padding:10px 12px; border-radius:8px; font-size:13px; font-weight:600; margin-bottom:16px;">
+      </div>
+
+      <form id="create-employee-form">
+        <div class="form-group">
+          <label>Employee ID / Login Username</label>
+          <input type="text" id="new-emp-id" placeholder="e.g. emp105 or 718293" required autofocus>
+          <span style="font-size:11.5px; color:#64748b; display:block; margin-top:3px;">Used by employee to log in on
+            workstation client</span>
+        </div>
+
+        <div class="form-group">
+          <label>Full Name</label>
+          <input type="text" id="new-emp-name" placeholder="e.g. Ramesh Kumar" required>
+        </div>
+
+        <div class="form-group">
+          <label>Initial Password</label>
+          <input type="password" id="new-emp-password" placeholder="At least 5 characters" required minlength="5">
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:24px;">
+          <button type="button" onclick="closeCreateEmployeeModal()"
+            style="background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; padding:9px 16px; border-radius:6px; font-weight:600; font-size:13px; cursor:pointer;">
+            Cancel
+          </button>
+          <button type="submit" id="btn-save-emp"
+            style="background:#16a34a; color:#fff; border:none; padding:9px 18px; border-radius:6px; font-weight:600; font-size:13px; cursor:pointer;">
+            Create Employee ID
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <header class="app-header">
+    <div class="brand">
+      <div class="brand-logo">TCS</div>
+      <div>
+        <h1>Staff Monitoring System</h1>
+        <span>Admin Web Dashboard</span>
+      </div>
+    </div>
+    <div class="user-info">
+      <div class="user-badge" id="admin-badge">Admin: Loading...</div>
+      <button class="btn-logout" onclick="logoutAdmin()">Logout</button>
+    </div>
+  </header>
+
+  <main class="main-container">
+
+    <!-- VIEW 1: TOTAL EMPLOYEES LIST -->
+    <div id="employees-list-view">
+      <div class="view-card">
+        <div class="view-header">
+          <div class="view-title-group">
+            <h2>Total Employees List</h2>
+            <p>Select any employee to view their attendance history, work duration, and idle minutes</p>
+          </div>
+          <div style="display:flex; align-items:center; gap:12px;">
+            <button class="btn-primary" onclick="openCreateEmployeeModal()"
+              style="background:#16a34a; color:#fff; border:none; padding:8px 16px; border-radius:8px; font-weight:600; font-size:13px; cursor:pointer; display:flex; align-items:center; gap:6px; transition:background 0.2s;">
+              <span style="font-size:16px; line-height:1;">+</span> Create New Employee
+            </button>
+            <span class="badge-count" id="total-employees-count">0 Employees</span>
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Employee ID</th>
+              <th>Full Name</th>
+              <th>Role</th>
+              <th>Account Status</th>
+              <th style="text-align: right;">Action</th>
+            </tr>
+          </thead>
+          <tbody id="employees-tbody">
+            <tr>
+              <td colspan="5" style="text-align:center; padding:30px; color:#64748b;">Loading employees...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- VIEW 2: SELECTED EMPLOYEE PROFILE & MONITORING -->
+    <div id="employee-profile-view">
+      <div class="profile-nav">
+        <button class="btn-back" onclick="showEmployeesList()">
+          ← Back to Employees List
+        </button>
+        <button class="btn-back" onclick="refreshCurrentProfile()">
+          🔄 Refresh Profile
+        </button>
+      </div>
+
+      <!-- EMPLOYEE HERO BANNER -->
+      <div class="employee-hero">
+        <div style="display:flex; align-items:center; gap:18px;">
+          <div class="emp-avatar" id="prof-avatar">E</div>
+          <div class="emp-meta">
+            <h3 id="prof-name">Employee Name</h3>
+            <p>Employee ID: <strong id="prof-id">-</strong> | Role: <strong id="prof-role">-</strong> | Status: <strong
+                id="prof-status">-</strong></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- WORK & IDLE TIME STATS CARDS -->
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-icon" style="background:#eff6ff; color:#2563eb;">💼</div>
+          <div>
+            <div class="kpi-val" id="prof-work-today">0s</div>
+            <div class="kpi-lbl">Overall Work Time (Today)</div>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon" style="background:#fef3c7; color:#d97706;">⏳</div>
+          <div>
+            <div class="kpi-val" id="prof-idle-today" style="color:#b45309;">0 mins</div>
+            <div class="kpi-lbl">Overall Idle Time (Today in Minutes)</div>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon" style="background:#f0fdf4; color:#16a34a;">⏱️</div>
+          <div>
+            <div class="kpi-val" id="prof-login-time" style="font-size:15px; font-weight:600;">-</div>
+            <div class="kpi-lbl">Latest Login (Date & AM/PM Time)</div>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon" style="background:#faf5ff; color:#7e22ce;">🚪</div>
+          <div>
+            <div class="kpi-val" id="prof-logout-time" style="font-size:15px; font-weight:600;">-</div>
+            <div class="kpi-lbl">Latest Logout (Date & AM/PM Time)</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECTION 1: ATTENDANCE HISTORY (SEPARATE DATE & 12-HOUR AM/PM TIME) -->
+      <div class="section-title">
+        <span>📅</span> History of Attendance (Separate Date and 12-Hour AM/PM Time)
+      </div>
+      <div class="view-card" style="margin-bottom: 28px;">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Login Time (Punch In - AM/PM)</th>
+              <th>Logout Time (Punch Out - AM/PM)</th>
+              <th>One Day Work Duration</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="attendance-tbody">
+            <tr>
+              <td colspan="5" style="text-align:center; padding:24px; color:#64748b;">No attendance history found.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- SECTION 2: IDLE TIME SESSIONS (IN MINUTES & SEPARATE DATE/TIME) -->
+      <div class="section-title">
+        <span>⏳</span> History of Idle Time Sessions
+      </div>
+      <div class="view-card">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Recorded Time (AM/PM)</th>
+              <th>Idle Duration (In Minutes)</th>
+              <th>Seconds</th>
+            </tr>
+          </thead>
+          <tbody id="idle-tbody">
+            <tr>
+              <td colspan="4" style="text-align:center; padding:24px; color:#64748b;">No idle sessions recorded.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+
+  </main>
+
+  <script>
+    let TOKEN = sessionStorage.getItem("admin_token");
+    let ADMIN_INFO = JSON.parse(sessionStorage.getItem("admin_user") || "{}");
+    let currentEmployeeId = null;
+
+    document.addEventListener("DOMContentLoaded", () => {
+      if (TOKEN && ADMIN_INFO.role === "admin") {
+        initDashboard();
+      } else {
+        document.getElementById("login-overlay").style.display = "flex";
+      }
+
+      document.getElementById("admin-login-form").addEventListener("submit", handleLogin);
+    });
+
+    function showForgotPasswordForm() {
+      document.getElementById("login-error").style.display = "none";
+      document.getElementById("forgot-error").style.display = "none";
+      document.getElementById("forgot-success").style.display = "none";
+      document.getElementById("admin-login-form").style.display = "none";
+      document.getElementById("admin-forgot-form").style.display = "block";
+      document.getElementById("forgot-step-1").style.display = "block";
+      document.getElementById("forgot-step-2").style.display = "none";
+
+      const adminVal = document.getElementById("admin-username").value.trim() || "ihc001";
+      document.getElementById("forgot-admin-id").value = adminVal;
+      document.getElementById("forgot-email").focus();
+    }
+
+    function showLoginForm() {
+      document.getElementById("forgot-error").style.display = "none";
+      document.getElementById("forgot-success").style.display = "none";
+      document.getElementById("admin-forgot-form").style.display = "none";
+      document.getElementById("admin-login-form").style.display = "block";
+      document.getElementById("admin-username").focus();
+    }
+
+    async function handleSendOTP() {
+      const admin_id = document.getElementById("forgot-admin-id").value.trim().toLowerCase();
+      const email = document.getElementById("forgot-email").value.trim().toLowerCase();
+      const errBox = document.getElementById("forgot-error");
+      const successBox = document.getElementById("forgot-success");
+      const btn = document.getElementById("btn-send-otp");
+
+      errBox.style.display = "none";
+      successBox.style.display = "none";
+
+      if (!admin_id || !email) {
+        errBox.textContent = "Please enter both Admin ID and Email.";
+        errBox.style.display = "block";
+        return;
+      }
+
+      btn.textContent = "Sending Verification Code...";
+      btn.disabled = true;
+
+      try {
+        const res = await fetch("/admin/forgot-password/request", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ admin_id, email })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          let msg = `✓ Verification code sent to <strong>${email}</strong>!`;
+          if (data.dev_code) {
+            msg += `<br><span style="color:#1e40af; font-size:12.5px; font-weight:700;">Verification Code: ${data.dev_code}</span>`;
+            document.getElementById("forgot-otp").value = data.dev_code;
+          }
+          successBox.innerHTML = msg;
+          successBox.style.display = "block";
+          document.getElementById("forgot-step-1").style.display = "none";
+          document.getElementById("forgot-step-2").style.display = "block";
+          document.getElementById("forgot-otp").focus();
+        } else {
+          errBox.textContent = data.detail || "Failed to send verification code.";
+          errBox.style.display = "block";
+        }
+      } catch (err) {
+        errBox.textContent = "Cannot connect to server. Check that backend is running.";
+        errBox.style.display = "block";
+      } finally {
+        btn.textContent = "Send Verification Code to Email";
+        btn.disabled = false;
+      }
+    }
+
+    async function handleVerifyAndReset() {
+      const admin_id = document.getElementById("forgot-admin-id").value.trim().toLowerCase();
+      const email = document.getElementById("forgot-email").value.trim().toLowerCase();
+      const otp = document.getElementById("forgot-otp").value.trim();
+      const new_password = document.getElementById("forgot-new-pwd").value;
+      const confirm_pwd = document.getElementById("forgot-confirm-pwd").value;
+      const errBox = document.getElementById("forgot-error");
+      const successBox = document.getElementById("forgot-success");
+      const btn = document.getElementById("btn-reset-pwd");
+
+      errBox.style.display = "none";
+
+      if (!otp) {
+        errBox.textContent = "Please enter the 6-digit verification code.";
+        errBox.style.display = "block";
+        return;
+      }
+
+      if (new_password.length < 5) {
+        errBox.textContent = "New password must be at least 5 characters.";
+        errBox.style.display = "block";
+        return;
+      }
+
+      if (new_password !== confirm_pwd) {
+        errBox.textContent = "Passwords do not match. Please re-enter.";
+        errBox.style.display = "block";
+        return;
+      }
+
+      btn.textContent = "Resetting Password...";
+      btn.disabled = true;
+
+      try {
+        const res = await fetch("/admin/forgot-password/verify-and-reset", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ admin_id, email, otp, new_password })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          alert(`✓ Success: Password for admin '${admin_id}' has been reset successfully! Please sign in with your new password.`);
+          showLoginForm();
+          document.getElementById("admin-username").value = admin_id;
+          document.getElementById("admin-password").value = new_password;
+          document.getElementById("admin-password").focus();
+        } else {
+          errBox.textContent = data.detail || "Verification failed. Please check the code and try again.";
+          errBox.style.display = "block";
+        }
+      } catch (err) {
+        errBox.textContent = "Error connecting to server.";
+        errBox.style.display = "block";
+      } finally {
+        btn.textContent = "Reset Password & Sign In";
+        btn.disabled = false;
+      }
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      const user_id = document.getElementById("admin-username").value.trim();
+      const password = document.getElementById("admin-password").value;
+      const errBox = document.getElementById("login-error");
+      const btn = document.getElementById("btn-login");
+
+      errBox.style.display = "none";
+      btn.textContent = "Signing In...";
+      btn.disabled = true;
+
+      try {
+        const res = await fetch("/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_id, password })
+        });
+        const data = await res.json();
+
+        if (res.ok && data.role === "admin") {
+          TOKEN = data.access_token;
+          ADMIN_INFO = data;
+          sessionStorage.setItem("admin_token", TOKEN);
+          sessionStorage.setItem("admin_user", JSON.stringify(data));
+          initDashboard();
+        } else if (res.ok && data.role !== "admin") {
+          errBox.textContent = "Access Denied: This account is not an administrator.";
+          errBox.style.display = "block";
+        } else {
+          errBox.textContent = data.detail || "Invalid Admin ID or Password.";
+          errBox.style.display = "block";
+        }
+      } catch (err) {
+        errBox.textContent = "Cannot connect to backend server.";
+        errBox.style.display = "block";
+      } finally {
+        btn.textContent = "Sign In";
+        btn.disabled = false;
+      }
+    }
+
+    function initDashboard() {
+      document.getElementById("login-overlay").style.display = "none";
+      document.getElementById("admin-badge").textContent = `Admin: ${ADMIN_INFO.full_name || ADMIN_INFO.user_id}`;
+      loadEmployeesList();
+    }
+
+    function logoutAdmin() {
+      sessionStorage.clear();
+      location.reload();
+    }
+
+    // -------------------------------------------------------------
+    // TAMIL NADU / INDIAN STANDARD TIME (IST: UTC+5:30) & 12-HR HELPERS
+    // -------------------------------------------------------------
+    function getISTDate(isoString) {
+      if (!isoString) return null;
+      let s = String(isoString).trim();
+      if (!s.endsWith("Z") && !s.includes("+") && !s.slice(10).includes("-")) {
+        s += "Z";
+      }
+      const d = new Date(s);
+      if (isNaN(d.getTime())) return null;
+
+      // Explicitly convert to Tamil Nadu / IST (UTC + 5:30)
+      const utcMs = d.getTime() + (d.getTimezoneOffset() * 60000);
+      const istMs = utcMs + (5.5 * 3600000);
+      return new Date(istMs);
+    }
+
+    // Returns date strictly as DD-MM-YYYY (e.g. 15-10-2026)
+    function formatTamilDate(isoString) {
+      const d = getISTDate(isoString);
+      if (!d) return "-";
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      return `${day}-${month}-${year}`;
+    }
+
+    // Returns time strictly in 12-Hour format with AM/PM (e.g. 09:10:40 AM / 05:45:20 PM)
+    function formatTamil12HourTime(isoString) {
+      const d = getISTDate(isoString);
+      if (!d) return "-";
+      let h = d.getHours();
+      const m = String(d.getMinutes()).padStart(2, '0');
+      const s = String(d.getSeconds()).padStart(2, '0');
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      h = h % 12;
+      h = h ? h : 12; // 0 hour is 12 AM
+      const hStr = String(h).padStart(2, '0');
+      return `${hStr}:${m}:${s} ${ampm}`;
+    }
+
+    // Returns Idle duration formatted in Minutes (e.g. 17 mins or 5 mins 20s)
+    function formatIdleInMinutes(seconds) {
+      const sec = parseInt(seconds || 0);
+      if (sec === 0) return "0 mins";
+      const m = Math.floor(sec / 60);
+      const s = sec % 60;
+      if (m > 0 && s > 0) {
+        return `${m} mins ${s}s`;
+      } else if (m > 0) {
+        return `${m} mins`;
+      } else {
+        return `${s}s (${(sec / 60).toFixed(1)} mins)`;
+      }
+    }
+
+    // LOAD ALL EMPLOYEES
+    async function loadEmployeesList() {
+      const tbody = document.getElementById("employees-tbody");
+      try {
+        const res = await fetch("/admin/users", {
+          headers: { "Authorization": `Bearer ${TOKEN}` }
+        });
+        if (!res.ok) throw new Error("Fetch failed");
+        const data = await res.json();
+        const users = data.users || [];
+        document.getElementById("total-employees-count").textContent = `${users.length} Employee(s)`;
+
+        if (users.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:30px; color:#64748b;">No employees registered.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = users.map(u => {
+          const empId = u.user_id || "";
+          const name = u.full_name || empId;
+          const status = u.is_active ? "Active" : "Inactive";
+          const statusClass = u.is_active ? "status-active" : "status-inactive";
+
+          return `
+            <tr class="clickable-row" onclick="selectEmployee('${empId}')">
+              <td><strong>${empId}</strong></td>
+              <td>${name}</td>
+              <td>${u.role || "employee"}</td>
+              <td><span class="status-badge ${statusClass}">${status}</span></td>
+              <td style="text-align: right;">
+                <button class="btn-select" onclick="event.stopPropagation(); selectEmployee('${empId}')">
+                  View Profile →
+                </button>
+              </td>
+            </tr>
+          `;
+        }).join("");
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="5" style="color:red; text-align:center; padding:24px;">Failed to load employees list.</td></tr>`;
+      }
+    }
+
+    // SELECT EMPLOYEE PROFILE
+    async function selectEmployee(employeeId) {
+      currentEmployeeId = employeeId;
+      document.getElementById("employees-list-view").style.display = "none";
+      document.getElementById("employee-profile-view").style.display = "block";
+
+      document.getElementById("prof-name").textContent = "Loading...";
+      document.getElementById("prof-id").textContent = employeeId;
+      document.getElementById("prof-avatar").textContent = employeeId.charAt(0).toUpperCase();
+      document.getElementById("attendance-tbody").innerHTML = `<tr><td colspan="5" style="text-align:center; padding:24px;">Loading attendance history...</td></tr>`;
+      document.getElementById("idle-tbody").innerHTML = `<tr><td colspan="4" style="text-align:center; padding:24px;">Loading idle history...</td></tr>`;
+
+      await fetchEmployeeDetails(employeeId);
+    }
+
+    function showEmployeesList() {
+      currentEmployeeId = null;
+      document.getElementById("employee-profile-view").style.display = "none";
+      document.getElementById("employees-list-view").style.display = "block";
+    }
+
+    function refreshCurrentProfile() {
+      if (currentEmployeeId) {
+        fetchEmployeeDetails(currentEmployeeId);
+      }
+    }
+
+    async function fetchEmployeeDetails(employeeId) {
+      try {
+        const res = await fetch(`/admin/users/${employeeId}/attendance`, {
+          headers: { "Authorization": `Bearer ${TOKEN}` }
+        });
+        if (!res.ok) throw new Error("Failed to fetch employee details");
+        const data = await res.json();
+
+        const emp = data.employee || {};
+        const attList = data.attendance || [];
+        const idleList = data.idle_records || [];
+
+        // 1. Hero Info
+        document.getElementById("prof-name").textContent = emp.full_name || emp.user_id || employeeId;
+        document.getElementById("prof-id").textContent = emp.user_id || employeeId;
+        document.getElementById("prof-role").textContent = emp.role || "employee";
+        document.getElementById("prof-status").textContent = emp.is_active ? "Active" : "Inactive";
+        document.getElementById("prof-avatar").textContent = (emp.full_name || emp.user_id || "E").charAt(0).toUpperCase();
+
+        // 2. Work & Idle KPI Cards
+        document.getElementById("prof-work-today").textContent = data.today_work_formatted || "0s";
+        document.getElementById("prof-idle-today").textContent = data.today_idle_formatted || "0 mins";
+
+        // Latest punch in & out (Date and 12-Hour AM/PM Time)
+        if (attList.length > 0) {
+          const latest = attList[0];
+          const latestDate = formatTamilDate(latest.attendance_in);
+          const latestInTime = formatTamil12HourTime(latest.attendance_in);
+          document.getElementById("prof-login-time").textContent = `${latestDate} | ${latestInTime}`;
+
+          if (latest.attendance_out) {
+            const outDate = formatTamilDate(latest.attendance_out);
+            const outTime = formatTamil12HourTime(latest.attendance_out);
+            document.getElementById("prof-logout-time").textContent = `${outDate} | ${outTime}`;
+          } else {
+            document.getElementById("prof-logout-time").innerHTML = `<span style="color:#16a34a; font-weight:700;">Currently Active</span>`;
+          }
+        } else {
+          document.getElementById("prof-login-time").textContent = "-";
+          document.getElementById("prof-logout-time").textContent = "-";
+        }
+
+        // 3. Attendance History Table (Separate Date and 12-Hour AM/PM Time)
+        const attTbody = document.getElementById("attendance-tbody");
+        if (attList.length === 0) {
+          attTbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:24px; color:#64748b;">No attendance history found.</td></tr>`;
+        } else {
+          attTbody.innerHTML = attList.map(a => {
+            const dateStr = formatTamilDate(a.attendance_in);
+            const inTimeStr = formatTamil12HourTime(a.attendance_in);
+            const outTimeStr = a.attendance_out ?
+              `<span class="time-badge">${formatTamil12HourTime(a.attendance_out)}</span>` :
+              `<span style="color:#16a34a; font-weight:600;">Currently Working</span>`;
+
+            const duration = a.work_formatted || "0s";
+            const statusBadge = a.is_active ?
+              `<span class="status-badge status-active">Active</span>` :
+              `<span class="status-badge" style="background:#f1f5f9; color:#475569;">Completed</span>`;
+
+            return `
+              <tr>
+                <td><strong>${dateStr}</strong></td>
+                <td><span class="time-badge">${inTimeStr}</span></td>
+                <td>${outTimeStr}</td>
+                <td><strong>${duration}</strong></td>
+                <td>${statusBadge}</td>
+              </tr>
+            `;
+          }).join("");
+        }
+
+        // 4. Idle Sessions Table (Separate Date and 12-Hour Time, Duration in Minutes)
+        const idleTbody = document.getElementById("idle-tbody");
+        if (idleList.length === 0) {
+          idleTbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:24px; color:#64748b;">No idle time recorded.</td></tr>`;
+        } else {
+          idleTbody.innerHTML = idleList.map(i => {
+            const recDate = formatTamilDate(i.recorded_at);
+            const recTime = formatTamil12HourTime(i.recorded_at);
+            const durMins = formatIdleInMinutes(i.idle_seconds);
+            const secStr = `${i.idle_seconds || 0}s`;
+
+            return `
+              <tr>
+                <td><strong>${recDate}</strong></td>
+                <td><span class="time-badge">${recTime}</span></td>
+                <td><span class="mins-badge">${durMins}</span></td>
+                <td>${secStr}</td>
+              </tr>
+            `;
+          }).join("");
+        }
+
+      } catch (err) {
+        alert("Failed to load employee profile details: " + err);
+      }
+    }
+
+    // CREATE NEW EMPLOYEE MODAL HANDLERS
+    function openCreateEmployeeModal() {
+      document.getElementById("create-emp-error").style.display = "none";
+      document.getElementById("create-emp-success").style.display = "none";
+      document.getElementById("create-employee-form").reset();
+      document.getElementById("create-employee-overlay").style.display = "flex";
+      document.getElementById("new-emp-id").focus();
+    }
+
+    function closeCreateEmployeeModal() {
+      document.getElementById("create-employee-overlay").style.display = "none";
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const createForm = document.getElementById("create-employee-form");
+      if (createForm) {
+        createForm.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const user_id = document.getElementById("new-emp-id").value.trim().toLowerCase();
+          const full_name = document.getElementById("new-emp-name").value.trim();
+          const password = document.getElementById("new-emp-password").value;
+          const errBox = document.getElementById("create-emp-error");
+          const successBox = document.getElementById("create-emp-success");
+          const saveBtn = document.getElementById("btn-save-emp");
+
+          errBox.style.display = "none";
+          successBox.style.display = "none";
+          saveBtn.textContent = "Creating...";
+          saveBtn.disabled = true;
+
+          try {
+            const res = await fetch("/admin/users", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${TOKEN}`
+              },
+              body: JSON.stringify({ user_id, full_name, password })
+            });
+            const data = await res.json();
+
+            if (res.ok) {
+              successBox.textContent = `✓ Employee '${user_id}' created successfully!`;
+              successBox.style.display = "block";
+              document.getElementById("create-employee-form").reset();
+              loadEmployeesList();
+              setTimeout(() => {
+                closeCreateEmployeeModal();
+              }, 1200);
+            } else {
+              errBox.textContent = data.detail || "Failed to create employee.";
+              errBox.style.display = "block";
+            }
+          } catch (err) {
+            errBox.textContent = "Error connecting to backend server.";
+            errBox.style.display = "block";
+          } finally {
+            saveBtn.textContent = "Create Employee ID";
+            saveBtn.disabled = false;
+          }
+        });
+      }
+    });
+  </script>
+</body>
+
+</html>

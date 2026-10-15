@@ -10,3 +10,5 @@ __pycache__/
 *.sqlite3
 *.jsonl
 *.log
+*.flag
+live_session.json

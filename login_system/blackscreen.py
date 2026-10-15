@@ -3,14 +3,20 @@ import tkinter as tk
 import json
 import os
 import requests
+<<<<<<< HEAD
 import sys
 import threading
+=======
+>>>>>>> 5a595d8 (feat: enhance admin web dashboard, employee monitoring, and remove id column dependencies)
 
 from pathlib import Path
 from datetime import datetime
 
 
 # ---------------- CONFIGURATION ----------------
+
+API_URL = "http://127.0.0.1:8000/employee/monitoring-events"
+ACCESS_TOKEN = os.environ.get("EMPLOYEE_ACCESS_TOKEN", "")
 
 BASE_DIR = Path(__file__).resolve().parent
 LOG_FILE = BASE_DIR / "events.jsonl"
@@ -31,10 +37,26 @@ def log_event(event_name, details=None):
         "details": details or {}
     }
 
-    with open(LOG_FILE, "a", encoding="utf-8") as file:
-        file.write(json.dumps(record) + "\n")
-        file.flush()
-        os.fsync(file.fileno())
+    # Save to local file
+    try:
+        with open(LOG_FILE, "a", encoding="utf-8") as file:
+            file.write(json.dumps(record) + "\n")
+            file.flush()
+            os.fsync(file.fileno())
+    except Exception as err:
+        print("LOCAL LOG ERROR:", err)
+
+    # Upload to backend if token exists
+    if ACCESS_TOKEN:
+        try:
+            requests.post(
+                API_URL,
+                json=record,
+                headers={"Authorization": f"Bearer {ACCESS_TOKEN}"},
+                timeout=5
+            )
+        except Exception as error:
+            print("BLACK SCREEN UPLOAD ERROR:", error)
 
     if not ACCESS_TOKEN:
         print("UPLOAD FAILED: Employee login token is missing.")
@@ -152,6 +174,16 @@ root.configure(bg="black")
 # Black window; do not force a Windows system lock.
 root.attributes("-fullscreen", True)
 
+def on_close_attempt():
+    message_label.config(
+        text="⚠️ Compliance Policy: Select a reason and click SUBMIT REASON & RESUME.",
+        fg="#f87171"
+    )
+    log_event("MONITORING_CANCEL_ATTEMPT", {
+        "reason": "Employee attempted to force-close break screen without submitting reason"
+    })
+
+root.protocol("WM_DELETE_WINDOW", on_close_attempt)
 root.bind("<Escape>", lambda event: resume_work())
 
 # Main content
